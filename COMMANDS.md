@@ -17,76 +17,34 @@ The following table outlines each command, its usage, aliases, and permissions r
 | `copykit`           | `copyec, copyenderchest` | `perplayerkit.copykit`         |
 | `sharekit`          | `N/A`                    | `perplayerkit.sharekit`        |
 | `shareec`           | `shareenderchest`        | `perplayerkit.shareenderchest` |
-| `transferkits`      | `transferkit`            | `perplayerkit.transferkits`    |
-| `shareaccept`       | `N/A`                    | `perplayerkit.copykit`         |
-| `sharedecline`      | `N/A`                    | `perplayerkit.copykit`         |
 | `swapkit`           | `N/A`                    | `perplayerkit.swapkit`         |
 | `deletekit`         | `N/A`                    | `perplayerkit.deletekit`       |
 | `inspectkit`        | `N/A`                    | `perplayerkit.staff`           |
 | `inspectec`         | `N/A`                    | `perplayerkit.staff`           |
 | `publickit`         | `pk, premadekit`         | `perplayerkit.publickit`       |
-| `k1`..`k<max-kits>` | `kit1`..`kit<max-kits>`  | `perplayerkit.kit`             |
-| `ec1`..`ec<max-kits>` | `enderchest1`..`enderchest<max-kits>` | `perplayerkit.enderchest` |
+| `k1`                | `kit1`                   | `perplayerkit.kit`             |
+| `k2`                | `kit2`                   | `perplayerkit.kit`             |
+| `k3`                | `kit3`                   | `perplayerkit.kit`             |
+| `k4`                | `kit4`                   | `perplayerkit.kit`             |
+| `k5`                | `kit5`                   | `perplayerkit.kit`             |
+| `k6`                | `kit6`                   | `perplayerkit.kit`             |
+| `k7`                | `kit7`                   | `perplayerkit.kit`             |
+| `k8`                | `kit8`                   | `perplayerkit.kit`             |
+| `k9`                | `kit9`                   | `perplayerkit.kit`             |
+| `ec1`               | `enderchest1`            | `perplayerkit.enderchest`      |
+| `ec2`               | `enderchest2`            | `perplayerkit.enderchest`      |
+| `ec3`               | `enderchest3`            | `perplayerkit.enderchest`      |
+| `ec4`               | `enderchest4`            | `perplayerkit.enderchest`      |
+| `ec5`               | `enderchest5`            | `perplayerkit.enderchest`      |
+| `ec6`               | `enderchest6`            | `perplayerkit.enderchest`      |
+| `ec7`               | `enderchest7`            | `perplayerkit.enderchest`      |
+| `ec8`               | `enderchest8`            | `perplayerkit.enderchest`      |
+| `ec9`               | `enderchest9`            | `perplayerkit.enderchest`      |
 | `enderchest`        | `ec`                     | `perplayerkit.viewenderchest`  |
 | `savepublickit`     | `N/A`                    | `perplayerkit.admin`           |
-| `purgeitem`         | `purgeitems`             | `perplayerkit.admin`           |
-| `kitdata`           | `N/A`                    | `perplayerkit.admin`           |
 | `regear`            | `rg`                     | `perplayerkit.regear`          |
 | `heal`              | `N/A`                    | `perplayerkit.heal`            |
 | `repair`            | `N/A`                    | `perplayerkit.repair`          |
-
-The `k<N>`/`ec<N>` shortcut commands cover every kit slot up to the `max-kits` config option (default 9, up to 99). Slots 1-9 are declared statically; commands for slots 10 and above only exist when `max-kits` is raised above 9 and are registered automatically at startup, also reachable as `/perplayerkit:k<N>`.
-
-## Kit Sharing and Transfers
-
-### Sharing with a player directly
-
-`/sharekit <slot> <player>` (or `/shareec <slot> <player>` for ender chests) sends the target player a request in chat with clickable **[ACCEPT]** and **[DECLINE]** buttons. If they accept, a snapshot of the shared kit is applied to their current inventory (or ender chest), exactly like redeeming a share code. Requests expire after 120 seconds, and a newer request to the same player replaces the previous one. The buttons run `/shareaccept <id>` and `/sharedecline <id>` under the hood; with only one pending request, `/shareaccept` and `/sharedecline` also work without an id.
-
-### Sharing with a code
-
-`/sharekit <slot>` (or `/shareec <slot>`) without a player still generates a share code, which is useful when sharing with multiple people at once. Anyone can redeem it with `/copykit <code>` while it is valid. Codes expire after 15 minutes.
-
-### Transferring kits between accounts
-
-`/transferkits <player>` sends the target player a request to receive **all** of your kits and ender chests. If they accept, a snapshot of every kit and ender chest slot you have is saved into their corresponding slots, overwriting whatever they had in those slots (slots you don't have are left untouched). Your own kits are not modified. This is useful when moving to a new account: log in with both accounts, run `/transferkits <new account>` from the old one, and accept on the new one.
-
-## Purging Items from Stored Kits
-
-`/purgeitem <item> <all confirm|player ...>` (permission: `perplayerkit.admin`, also usable from the console) deletes every occurrence of a specific item type from stored kits and ender chests:
-
-- `/purgeitem TNT PlayerOne PlayerTwo` — removes the item from all kit and ender chest slots of the listed players. Players can be given by name or UUID and do not need to be online. If any name cannot be resolved, the purge is cancelled so it never silently skips someone.
-- `/purgeitem TNT all confirm` — removes the item from **every** player kit and ender chest entry in the database. Because this touches all stored data, the `confirm` keyword is required; running the command without it only prints a warning.
-
-Details worth knowing:
-
-- **Nested containers are searched too.** The item is also removed from inside shulker boxes of all colors, any other container block stored as an item (chests, barrels, dispensers, etc.), and bundles — including containers nested inside bundles.
-- **Works with every storage backend.** Kits are stored as serialized blobs in all backends (SQLite, MySQL, PostgreSQL, Redis, YAML), so the purge rewrites each affected entry in place and behaves identically everywhere.
-- **Empty entries are deleted.** If removing the item leaves a kit or ender chest completely empty, the entry is deleted instead of being kept as an empty kit.
-- **Online players are covered.** Cached kits of online players are refreshed, so the next `/k1`-style load uses the purged version. The purge does not modify anyone's *live* inventory — only stored kits and ender chests.
-- **Public kits and the kit room are not touched.** Those are admin-managed; edit them with `/savepublickit` and `/kitroom` if needed.
-- The purge runs asynchronously; progress is logged to the console and a summary (items removed, entries modified/deleted/scanned) is sent when it finishes. Only one purge can run at a time.
-
-## Exporting and Importing Kit Data (`.ppk` files)
-
-`/kitdata` (permission: `perplayerkit.admin`, also usable from the console) moves kit data between servers as a single file — for example to hand a finished kit room / public kit setup to another server owner:
-
-- `/kitdata export <all|kitroom|publickits|playerkits> <file>` — writes the selected data to `plugins/PerPlayerKit/<file>.ppk`. If the file already exists, the command asks to be re-run with `confirm` before overwriting it.
-- `/kitdata import <file>` — imports a `.ppk` file placed in `plugins/PerPlayerKit/`. If the import would overwrite existing data, the command reports exactly what would be replaced (kit room pages, public kits, player kit/ender chest entries) and asks to be re-run with `confirm`.
-
-What gets exported per scope:
-
-- **`kitroom`** — the five kit room pages, as last saved to storage (use `/kitroom save` first if you edited the kit room since the last save).
-- **`publickits`** — every public kit **including its config entry** (display name and menu icon). On import, missing `publickits` entries are added to `config.yml` automatically and existing ones are updated, so the receiving server does not need to edit its config by hand. Kits that are declared in the config but never saved with `/savepublickit` are carried over config-only.
-- **`playerkits`** — all player kit and ender chest entries in the database.
-- **`all`** — all of the above.
-
-Details worth knowing:
-
-- **Works across storage backends.** The file stores the same serialized entries every backend uses, so you can export from a SQLite server and import into a MySQL/PostgreSQL/Redis/YAML one (and vice versa).
-- **The file format is validated defensively.** `.ppk` is a small custom binary format with a version number and checksum. On import the file is fully parsed and every kit is test-decoded *before* anything is written — a corrupted, truncated or malformed file is rejected as a whole. Only import files from people you trust, the same way you would treat a downloaded plugin or world.
-- **Caches refresh immediately.** After an import the kit room, public kits and the kits of affected online players are reloaded — no restart needed.
-- File names may contain letters, numbers, dots, dashes and underscores; the `.ppk` extension is added automatically. Files are only ever read from and written to the plugin folder. Only one export/import can run at a time.
 
 ## Regear Command Details
 
@@ -118,7 +76,7 @@ The following table outlines each top-level permission and the sub-permissions i
 | `kit.admin`        | `perplayerkit.admin`                                                                                                                                                                                                                                                                                                                                                                         |
 | `kit.staff`        | `perplayerkit.staff`                                                                                                                                                                                                                                                                                                                                                                         |
 | `kit.use`          | `perplayerkit.use`                                                                                                                                                                                                                                                                                                                                                                           |
-| `perplayerkit.use` | `perplayerkit.menu`, `perplayerkit.copykit`, `perplayerkit.sharekit`, `perplayerkit.shareenderchest`, `perplayerkit.transferkits`, `perplayerkit.swapkit`, `perplayerkit.deletekit`, `perplayerkit.publickit`, `perplayerkit.kit`, `perplayerkit.enderchest`, `perplayerkit.viewenderchest`, `perplayerkit.regear`, `perplayerkit.heal`, `perplayerkit.repair`, `perplayerkit.rekitonrespawn`, `perplayerkit.rekitonkill` |
+| `perplayerkit.use` | `perplayerkit.menu`, `perplayerkit.copykit`, `perplayerkit.sharekit`, `perplayerkit.shareenderchest`, `perplayerkit.swapkit`, `perplayerkit.deletekit`, `perplayerkit.publickit`, `perplayerkit.kit`, `perplayerkit.enderchest`, `perplayerkit.viewenderchest`, `perplayerkit.regear`, `perplayerkit.heal`, `perplayerkit.repair`, `perplayerkit.rekitonrespawn`, `perplayerkit.rekitonkill` |
 
 ## Message Notifications
 

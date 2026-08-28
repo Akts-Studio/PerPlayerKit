@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.gui;
 
@@ -55,16 +55,7 @@ public class ItemUtil {
     }
 
     public static ItemStack createGlassPane() {
-        ItemStack item = new ItemStack(StyleManager.get().getGlassMaterial());
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            // No tooltip at all where the API allows it; a blank name otherwise.
-            if (!GuiCompat.hideTooltip(meta)) {
-                meta.setDisplayName(" ");
-            }
-            item.setItemMeta(meta);
-        }
-        return item;
+        return createItem(StyleManager.get().getGlassMaterial(), 1, " ");
     }
 
     public static ItemStack createItem(Material material, String name) {
@@ -79,7 +70,7 @@ public class ItemUtil {
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_POTION_EFFECTS, ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DESTROYS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_DYE);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP, ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DESTROYS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_DYE);
             item.setItemMeta(meta);
         }
 
@@ -91,7 +82,7 @@ public class ItemUtil {
 
         if (meta != null) {
             meta.addEnchant(Enchantment.MENDING, 1, true);
-            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_POTION_EFFECTS, ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DESTROYS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_DYE);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP, ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_DESTROYS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_DYE);
             item.setItemMeta(meta);
         }
 
@@ -99,3 +90,4 @@ public class ItemUtil {
     }
 
 }
+

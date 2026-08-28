@@ -1,6 +1,6 @@
 package dev.noah.perplayerkit.util;
 
-import dev.noah.perplayerkit.PerPlayerKit;
+import dev.noah.perplayerkit.TrKit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
@@ -12,11 +12,11 @@ public class SoundManager {
 
     private static Sound getSound(String key, String defaultName) {
         String path = BASE_KEY + key;
-        String soundName = PerPlayerKit.getPlugin().getConfig().getString(path, defaultName);
+        String soundName = TrKit.getPlugin().getConfig().getString(path, defaultName);
         try {
             return Sound.valueOf(soundName);
         } catch (IllegalArgumentException ex) {
-            PerPlayerKit.getPlugin().getLogger()
+            TrKit.getPlugin().getLogger()
                 .warning("Invalid sound '" + soundName + "' for config key '" + path + "'. Using default '" + defaultName + "'.");
             return Sound.valueOf(defaultName);
         }
@@ -59,7 +59,7 @@ public class SoundManager {
 
     private static void play(Player player, Sound sound) {
         // exit if sounds are disabled
-        if (!PerPlayerKit.getPlugin().getConfig().getBoolean("sounds.enabled", true)) {
+        if (!TrKit.getPlugin().getConfig().getBoolean("sounds.enabled", true)) {
             return;
         }
         player.playSound(player.getLocation(), sound, 1.0f, 1.0f);

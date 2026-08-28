@@ -1,0 +1,31 @@
+prefix: "<green><b>trkit <gray>» <white>"
+no-permission: "<red>Bu komutu kullanmak için yetkiniz yok.</red>"
+only-players: "<red>Bu komut sadece oyuncular tarafından kullanılabilir.</red>"
+player-not-found: "<red>Oyuncu bulunamadı.</red>"
+invalid-slot: "<red>Geçersiz bir yuva numarası girdiniz.</red>"
+
+kit-saved: "<green>%slot%. Kit Kaydedildi!</green>"
+kit-empty: "<red>Kit Boş Olamaz!</red>"
+kit-deleted: "<green>%slot%. Kit silindi!</green>"
+kit-loaded: "<green>%slot%. Kit Yüklendi!</green>"
+kit-not-found: "<red>Kit %slot% bulunamadı!</red>"
+
+public-kit-saved: "<green>Hazır Kit %id% Kaydedildi!</green>"
+public-kit-loaded: "<green>Public Kit Yüklendi!</green>"
+public-kit-load-info: "<gray>Bu kiti kit düzenleyicisine aktararak kendi kitinizi kaydedebilirsiniz.</gray>"
+public-kit-not-found: "<red>Kit Bulunamadı!</red>"
+
+ec-saved: "<green>Enderchest %slot% Kaydedildi!</green>"
+ec-empty: "<red>Enderchest Boş Olamaz!</red>"
+ec-deleted: "<green>%slot%. Ender Chest silindi!</green>"
+ec-loaded: "<green>%slot%. Enderchest Yüklendi!</green>"
+ec-not-found: "<red>Enderchest %slot% Bulunamadı!</red>"
+
+inspection-kit-empty: "<red>%player% adlı oyuncunun %slot%. yuvasında bir kiti yok.</red>"
+inspection-ec-empty: "<red>%player% adlı oyuncunun %slot%. yuvasında ender sandığı yok.</red>"
+inspection-error: "<red>Veriler yüklenirken bir hata oluştu. Detaylar için konsola bakın.</red>"
+
+menu-saved: "<green>Menü Kaydedildi!</green>"
+inventory-cleared: "<green>Envanterin Temizlendi</green>"
+
+reload-success: "<green>Konfigürasyon başarıyla yeniden yüklendi.</green>"

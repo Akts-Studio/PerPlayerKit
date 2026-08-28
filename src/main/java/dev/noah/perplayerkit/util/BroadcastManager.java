@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.util;
 
@@ -29,22 +29,25 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class BroadcastManager {
 
     private static final int LINE_LENGTH = 60; // Length of the strikethrough line
-    private static final String FIGURE_SPACE = " "; // A whitespace character of consistent width
+    private static final String FIGURE_SPACE = "\u2007"; // A whitespace character of consistent width
     private static BroadcastManager instance;
-    private final int broadcastDistance = 200;
     private final Plugin plugin;
     private final CooldownManager repairBroadcastCooldown = new CooldownManager(5);
     private final CooldownManager kitroomBroadcastCooldown = new CooldownManager(15);
     private final BukkitAudiences audience;
+    private Component prefix;
+    private com.tcoded.folialib.wrapper.task.WrappedTask scheduledBroadcastTask;
 
     public BroadcastManager(Plugin plugin) {
         this.plugin = plugin;
         audience = BukkitAudiences.create(plugin);
+        // Prefix değiştirildi
+        prefix = MiniMessage.miniMessage()
+                .deserialize(plugin.getConfig().getString("prefix", "<green><b>mKit <gray>» <white>"));
         instance = this;
     }
 
@@ -62,7 +65,8 @@ public class BroadcastManager {
 
         int padding = (LINE_LENGTH - messageLength) / 2;
 
-        String formattedMessage = strikeThroughLine + "\n\n" + " ".repeat(3) + FIGURE_SPACE.repeat(Math.max(padding, 0)) + message + "\n\n" + strikeThroughLine;
+        String formattedMessage = strikeThroughLine + "\n\n" + " ".repeat(3) + FIGURE_SPACE.repeat(Math.max(padding, 0))
+                + message + "\n\n" + strikeThroughLine;
 
         return MiniMessage.miniMessage().deserialize(formattedMessage);
     }
@@ -80,22 +84,30 @@ public class BroadcastManager {
             message = PlaceholderAPI.setPlaceholders(player, message);
         }
 
-        Component prefix = Lang.get().prefix();
-        Component body = MiniMessage.miniMessage().deserialize(message);
+        boolean defaultEnabled = plugin.getConfig().getBoolean("broadcast-settings.default-enabled", true);
+        int defaultDistance = plugin.getConfig().getInt("broadcast-settings.default-distance", 250);
+
         for (Player broadcastPlayer : world.getPlayers()) {
-            if (broadcastPlayer.getLocation().distance(player.getLocation()) < broadcastDistance) {
+            org.bukkit.persistence.PersistentDataContainer pdc = broadcastPlayer.getPersistentDataContainer();
+            boolean enabled = pdc.getOrDefault(dev.noah.perplayerkit.commands.KitBroadcastCommand.ENABLED_KEY,
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) (defaultEnabled ? 1 : 0)) == (byte) 1;
+            int distanceSetting = pdc.getOrDefault(dev.noah.perplayerkit.commands.KitBroadcastCommand.DISTANCE_KEY,
+                    org.bukkit.persistence.PersistentDataType.INTEGER, defaultDistance);
+
+            if (!enabled)
+                continue;
+
+            if (broadcastPlayer.getLocation().distance(player.getLocation()) < distanceSetting) {
+                // Check if the broadcast player has permission to see this message
                 if (broadcastPlayer.hasPermission(permission)) {
-                    audience.player(broadcastPlayer).sendMessage(prefix.append(body));
+                    audience.player(broadcastPlayer)
+                            .sendMessage(prefix.append(MiniMessage.miniMessage().deserialize(message)));
                 }
             }
         }
     }
 
-    private void broadcastMessage(Player player, MessageKey key, CooldownManager cooldownManager) {
-        broadcastMessage(player, key, cooldownManager, null);
-    }
-
-    private void broadcastMessage(Player player, MessageKey key, CooldownManager cooldownManager, String kitName) {
+    private void broadcastMessage(Player player, BroadcastManager.MessageKey key, CooldownManager cooldownManager) {
 
         if (!plugin.getConfig().getBoolean("feature.broadcast-on-player-action", true)) {
             return;
@@ -105,6 +117,8 @@ public class BroadcastManager {
             return;
         }
 
+        // Check if this is a kit loading message and if kit message broadcasts are
+        // disabled
         if (isKitLoadingMessage(key) && !plugin.getConfig().getBoolean("feature.broadcast-kit-messages", true)) {
             return;
         }
@@ -113,14 +127,19 @@ public class BroadcastManager {
             return;
         }
 
-        String configBase = key.getConfigKey();
-        String enabledPath = configBase + ".enabled";
-        String permissionPath = configBase + ".permission";
+        String messageConfigPath = key.getKey();
+        String enabledPath = messageConfigPath + ".enabled";
+        String messagePath = messageConfigPath + ".message";
+        String permissionPath = messageConfigPath + ".permission";
 
+        // Check if message is enabled
         if (!plugin.getConfig().getBoolean(enabledPath, true)) {
             return;
         }
 
+        // Varsayılan mesaj Türkçeleştirildi ve Aqua yerine Green kullanıldı
+        String message = plugin.getConfig().getString(messagePath, "<gray><green>%player%</green> " +
+                "bir işlem gerçekleştirdi.</gray>");
         String permission = plugin.getConfig().getString(permissionPath, "perplayerkit.kitnotify");
 
         String playerName;
@@ -130,10 +149,7 @@ public class BroadcastManager {
             playerName = player.getName();
         }
 
-        String message = Lang.get().raw(key.getLangKey(), Map.of(
-                "player", playerName,
-                "kitname", kitName == null ? "" : kitName
-        ));
+        message = message.replace("%player%", playerName);
 
         broadcastMessage(player, message, permission);
 
@@ -154,12 +170,12 @@ public class BroadcastManager {
         broadcastMessage(player, MessageKey.PLAYER_OPENED_KIT_ROOM, kitroomBroadcastCooldown);
     }
 
-    public void broadcastPlayerLoadedPrivateKit(Player player, String kitName) {
-        broadcastMessage(player, MessageKey.PLAYER_LOADED_PRIVATE_KIT, null, kitName);
+    public void broadcastPlayerLoadedPrivateKit(Player player) {
+        broadcastMessage(player, MessageKey.PLAYER_LOADED_PRIVATE_KIT, null);
     }
 
-    public void broadcastPlayerLoadedPublicKit(Player player, String kitName) {
-        broadcastMessage(player, MessageKey.PLAYER_LOADED_PUBLIC_KIT, null, kitName);
+    public void broadcastPlayerLoadedPublicKit(Player player) {
+        broadcastMessage(player, MessageKey.PLAYER_LOADED_PUBLIC_KIT, null);
     }
 
     public void broadcastPlayerLoadedEnderChest(Player player) {
@@ -179,19 +195,41 @@ public class BroadcastManager {
     }
 
     public void startScheduledBroadcast() {
+        stopScheduledBroadcast(); // Stop existing if any
+
         List<Component> messages = new ArrayList<>();
-        Lang.get().rawList("scheduled-broadcast.messages").forEach(message -> messages.add(generateBroadcastComponent(message)));
+        plugin.getConfig().getStringList("scheduled-broadcast.messages")
+                .forEach(message -> messages.add(generateBroadcastComponent(message)));
 
-        int[] index = {0};
+        if (messages.isEmpty())
+            return;
 
-        if (plugin.getConfig().getBoolean("scheduled-broadcast.enabled") && !messages.isEmpty()) {
-            Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    audience.player(player).sendMessage(messages.get(index[0]));
+        int[] index = { 0 };
+
+        if (plugin.getConfig().getBoolean("scheduled-broadcast.enabled")) {
+            scheduledBroadcastTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
+                @Override
+                public void run() {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        audience.player(player).sendMessage(messages.get(index[0]));
+                    }
+                    index[0] = (index[0] + 1) % messages.size();
                 }
-                index[0] = (index[0] + 1) % messages.size();
             }, 0, plugin.getConfig().getInt("scheduled-broadcast.period") * 20L);
         }
+    }
+
+    public void stopScheduledBroadcast() {
+        if (scheduledBroadcastTask != null) {
+            scheduledBroadcastTask.cancel();
+            scheduledBroadcastTask = null;
+        }
+    }
+
+    public void reloadPrefix() {
+        // Refresh prefix from config
+        prefix = MiniMessage.miniMessage()
+                .deserialize(plugin.getConfig().getString("prefix", "<green><b>mKit <gray>» <white>"));
     }
 
     public void sendComponentMessage(Player player, Component message) {
@@ -199,30 +237,21 @@ public class BroadcastManager {
     }
 
     public enum MessageKey {
-        PLAYER_REPAIRED("messages.player-repaired", "broadcast-messages.player-repaired"),
-        PLAYER_HEALED("messages.player-healed", "broadcast-messages.player-healed"),
-        PLAYER_OPENED_KIT_ROOM("messages.player-opened-kit-room", "broadcast-messages.player-opened-kit-room"),
-        PLAYER_LOADED_PRIVATE_KIT("messages.player-loaded-private-kit", "broadcast-messages.player-loaded-private-kit"),
-        PLAYER_LOADED_PUBLIC_KIT("messages.player-loaded-public-kit", "broadcast-messages.player-loaded-public-kit"),
-        PLAYER_LOADED_ENDER_CHEST("messages.player-loaded-enderchest", "broadcast-messages.player-loaded-enderchest"),
-        PLAYER_COPIED_KIT("messages.player-copied-kit", "broadcast-messages.player-copied-kit"),
-        PLAYER_COPIED_EC("messages.player-copied-ec", "broadcast-messages.player-copied-ec"),
-        PLAYER_REGEARED("messages.player-regeared", "broadcast-messages.player-regeared");
+        PLAYER_REPAIRED("messages.player-repaired"), PLAYER_HEALED("messages.player-healed"),
+        PLAYER_OPENED_KIT_ROOM("messages.player-opened-kit-room"),
+        PLAYER_LOADED_PRIVATE_KIT("messages.player-loaded-private-kit"),
+        PLAYER_LOADED_PUBLIC_KIT("messages.player-loaded-public-kit"),
+        PLAYER_LOADED_ENDER_CHEST("messages.player-loaded-enderchest"), PLAYER_COPIED_KIT("messages.player-copied-kit"),
+        PLAYER_COPIED_EC("messages.player-copied-ec"), PLAYER_REGEARED("messages.player-regeared");
 
-        private final String configKey;
-        private final String langKey;
+        private final String key;
 
-        MessageKey(String configKey, String langKey) {
-            this.configKey = configKey;
-            this.langKey = langKey;
+        MessageKey(String key) {
+            this.key = key;
         }
 
-        public String getConfigKey() {
-            return configKey;
-        }
-
-        public String getLangKey() {
-            return langKey;
+        public String getKey() {
+            return key;
         }
     }
 }

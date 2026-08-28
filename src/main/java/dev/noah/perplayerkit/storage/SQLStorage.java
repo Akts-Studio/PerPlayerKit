@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.storage;
 
@@ -22,7 +22,6 @@ import dev.noah.perplayerkit.storage.exceptions.StorageConnectionException;
 import dev.noah.perplayerkit.storage.exceptions.StorageOperationException;
 import dev.noah.perplayerkit.storage.sql.SQLDatabase;
 
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -30,7 +29,7 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
-public class SQLStorage implements StorageManager, BackupCapable {
+public class SQLStorage implements StorageManager {
 
     private final SQLDatabase db;
 
@@ -40,7 +39,8 @@ public class SQLStorage implements StorageManager, BackupCapable {
 
     private void createTable() throws SQLException {
         try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(db.getCreateTableStatement())) {
+             PreparedStatement ps = conn.prepareStatement(
+                "CREATE TABLE IF NOT EXISTS kits (KITID VARCHAR(100), KITDATA TEXT(15000), PRIMARY KEY (KITID))")) {
             ps.executeUpdate();
         }
     }
@@ -78,20 +78,6 @@ public class SQLStorage implements StorageManager, BackupCapable {
     }
 
     @Override
-    public boolean supportsNativeBackup() {
-        return db.supportsOnlineBackup();
-    }
-
-    @Override
-    public void backupTo(Path target) throws StorageOperationException {
-        try {
-            db.backupTo(target);
-        } catch (SQLException e) {
-            throw new StorageOperationException("Failed to back up the database to " + target, e);
-        }
-    }
-
-    @Override
     public void keepAlive() throws StorageConnectionException {
         try (Connection conn = db.getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT 1")) {
@@ -104,7 +90,8 @@ public class SQLStorage implements StorageManager, BackupCapable {
     @Override
     public void saveKitDataByID(String kitID, String data) {
         try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(db.getUpsertStatement())) {
+             PreparedStatement ps = conn.prepareStatement(
+                "REPLACE INTO kits (KITID, KITDATA) VALUES (?,?)")) {
             ps.setString(1, kitID);
             ps.setString(2, data);
             ps.executeUpdate();
@@ -149,7 +136,7 @@ public class SQLStorage implements StorageManager, BackupCapable {
     public void deleteKitByID(String kitID) {
         try (Connection conn = db.getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM kits WHERE KITID=?")) {
+                 "DELETE FROM kits WHERE KITID=?")) {
             ps.setString(1, kitID);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -159,16 +146,17 @@ public class SQLStorage implements StorageManager, BackupCapable {
 
     @Override
     public Set<String> getAllKitIDs() {
-        Set<String> kitIDs = new HashSet<>();
+        Set<String> ids = new HashSet<>();
         try (Connection conn = db.getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT KITID FROM kits");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                kitIDs.add(rs.getString("KITID"));
+                ids.add(rs.getString("KITID"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return kitIDs;
+        return ids;
     }
 }
+

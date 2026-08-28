@@ -1,52 +1,49 @@
 /*
  * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.util;
 
-import dev.noah.perplayerkit.storage.BackupCapable;
-import dev.noah.perplayerkit.storage.StorageManager;
-import dev.noah.perplayerkit.storage.exceptions.StorageOperationException;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class BackupManager {
 
     private static BackupManager instance;
     private final Plugin plugin;
-    private final StorageManager storageManager;
     private final File backupDir;
     private final boolean enabled;
-    private BukkitTask hourlyTask;
-    private BukkitTask dailyTask;
-    private BukkitTask weeklyTask;
-    private BukkitTask monthlyTask;
-    private BukkitTask cleanupTask;
+    private WrappedTask hourlyTask;
+    private WrappedTask dailyTask;
+    private WrappedTask weeklyTask;
+    private WrappedTask monthlyTask;
+    private WrappedTask cleanupTask;
 
     // Time constants
     private static final long HOUR_IN_TICKS = 20 * 60 * 60; // 1 hour in ticks
@@ -66,9 +63,8 @@ public class BackupManager {
     private static final String WEEKLY_PREFIX = "weekly_";
     private static final String MONTHLY_PREFIX = "monthly_";
 
-    public BackupManager(Plugin plugin, StorageManager storageManager) {
+    public BackupManager(Plugin plugin) {
         this.plugin = plugin;
-        this.storageManager = storageManager;
         this.enabled = plugin.getConfig().getBoolean("backup.enabled", true);
         this.backupDir = new File(plugin.getDataFolder(), "backups");
 
@@ -98,44 +94,44 @@ public class BackupManager {
         plugin.getLogger().info("Scheduling automatic backups...");
 
         // Schedule hourly backups (every hour)
-        hourlyTask = new BukkitRunnable() {
+        hourlyTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 performBackup(HOURLY_PREFIX);
             }
-        }.runTaskTimerAsynchronously(plugin, HOUR_IN_TICKS, HOUR_IN_TICKS);
+        }, HOUR_IN_TICKS, HOUR_IN_TICKS);
 
         // Schedule daily backups (every day)
-        dailyTask = new BukkitRunnable() {
+        dailyTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 performBackup(DAILY_PREFIX);
             }
-        }.runTaskTimerAsynchronously(plugin, DAY_IN_TICKS, DAY_IN_TICKS);
+        }, DAY_IN_TICKS, DAY_IN_TICKS);
 
         // Schedule weekly backups (every week)
-        weeklyTask = new BukkitRunnable() {
+        weeklyTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 performBackup(WEEKLY_PREFIX);
             }
-        }.runTaskTimerAsynchronously(plugin, WEEK_IN_TICKS, WEEK_IN_TICKS);
+        }, WEEK_IN_TICKS, WEEK_IN_TICKS);
 
         // Schedule monthly backups (every month)
-        monthlyTask = new BukkitRunnable() {
+        monthlyTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 performBackup(MONTHLY_PREFIX);
             }
-        }.runTaskTimerAsynchronously(plugin, MONTH_IN_TICKS, MONTH_IN_TICKS);
+        }, MONTH_IN_TICKS, MONTH_IN_TICKS);
 
         // Schedule cleanup task (every 6 hours)
-        cleanupTask = new BukkitRunnable() {
+        cleanupTask = dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runTimerAsync(new Runnable() {
             @Override
             public void run() {
                 cleanupOldBackups();
             }
-        }.runTaskTimerAsynchronously(plugin, HOUR_IN_TICKS * 6, HOUR_IN_TICKS * 6);
+        }, HOUR_IN_TICKS * 6, HOUR_IN_TICKS * 6);
 
         plugin.getLogger().info("Automatic backups scheduled successfully");
     }
@@ -153,7 +149,13 @@ public class BackupManager {
         try {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
 
-            backupDatabase(prefix, timestamp);
+            // Backup SQLite database
+            File sqliteFile = new File(plugin.getDataFolder(), "database.db");
+            if (sqliteFile.exists()) {
+                File backupFile = new File(backupDir, prefix + "database_" + timestamp + ".db");
+                Files.copy(sqliteFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                plugin.getLogger().info("Backed up SQLite database to: " + backupFile.getName());
+            }
 
             // Backup YAML storage
             File yamlFile = new File(plugin.getDataFolder(), "please-use-a-real-database.yml");
@@ -173,58 +175,6 @@ public class BackupManager {
     }
 
     /**
-     * Back up the SQLite database. The database engine writes the snapshot itself
-     * (see {@link BackupCapable}), which is consistent even while the server is
-     * writing; copying the live file is only used if the engine cannot do it.
-     */
-    private void backupDatabase(String prefix, String timestamp) throws IOException {
-        File databaseFile = new File(plugin.getDataFolder(), "database.db");
-        if (!databaseFile.exists()) {
-            return;
-        }
-
-        File backupFile = new File(backupDir, prefix + "database_" + timestamp + ".db");
-
-        if (storageManager instanceof BackupCapable capable && capable.supportsNativeBackup()) {
-            try {
-                capable.backupTo(backupFile.toPath());
-                plugin.getLogger().info("Backed up SQLite database to: " + backupFile.getName());
-                return;
-            } catch (StorageOperationException e) {
-                plugin.getLogger().warning("SQLite snapshot backup failed (" + e.getMessage()
-                        + "), falling back to copying the database files");
-            }
-        }
-
-        copyDatabaseFiles(prefix, timestamp, databaseFile, backupFile);
-    }
-
-    /**
-     * Fallback used when the database cannot snapshot itself: copy the database
-     * file together with its WAL and SHM sidecars, which have to be restored
-     * alongside it for the copy to be usable.
-     */
-    private void copyDatabaseFiles(String prefix, String timestamp, File databaseFile, File backupFile)
-            throws IOException {
-        Files.copy(databaseFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        plugin.getLogger().info("Backed up SQLite database to: " + backupFile.getName());
-
-        // Write-Ahead Log
-        File walFile = new File(plugin.getDataFolder(), "database.db-wal");
-        if (walFile.exists()) {
-            Files.copy(walFile.toPath(), new File(backupDir, prefix + "database-wal_" + timestamp + ".db").toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
-        }
-
-        // Shared Memory index
-        File shmFile = new File(plugin.getDataFolder(), "database.db-shm");
-        if (shmFile.exists()) {
-            Files.copy(shmFile.toPath(), new File(backupDir, prefix + "database-shm_" + timestamp + ".db").toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
-        }
-    }
-
-    /**
      * Backup additional files that might be important for the plugin
      * 
      * @param prefix    The backup prefix
@@ -236,6 +186,20 @@ public class BackupManager {
         if (configFile.exists()) {
             File backupFile = new File(backupDir, prefix + "config_" + timestamp + ".yml");
             Files.copy(configFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // Backup any WAL files (SQLite Write-Ahead Logging)
+        File walFile = new File(plugin.getDataFolder(), "database.db-wal");
+        if (walFile.exists()) {
+            File backupFile = new File(backupDir, prefix + "database-wal_" + timestamp + ".db");
+            Files.copy(walFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // Backup any SHM files (SQLite Shared Memory)
+        File shmFile = new File(plugin.getDataFolder(), "database.db-shm");
+        if (shmFile.exists()) {
+            File backupFile = new File(backupDir, prefix + "database-shm_" + timestamp + ".db");
+            Files.copy(shmFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -296,12 +260,9 @@ public class BackupManager {
         }
 
         plugin.getLogger().info("Performing manual backup...");
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                performBackup("manual_");
-            }
-        }.runTaskAsynchronously(plugin);
+        dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync((wrappedTask) -> {
+            performBackup("manual_");
+        });
     }
 
     /**
@@ -376,3 +337,4 @@ public class BackupManager {
         }
     }
 }
+

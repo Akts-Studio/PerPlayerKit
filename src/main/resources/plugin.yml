@@ -1,11 +1,13 @@
-name: PerPlayerKit
+name: trKit
 version: "${project.version}"
-main: dev.noah.perplayerkit.PerPlayerKit
-author: Noah Ross
-api-version: 1.19
+main: dev.noah.perplayerkit.TrKit
+author: maskecikk
+description: kitkitkitkit
+website: https://github.com/themaskee
+api-version: 1.21
+folia-supported: true
 softdepend:
   - PlaceholderAPI
-  - WorldGuard
 
 
 permissions:
@@ -24,31 +26,42 @@ permissions:
       perplayerkit.copykit: true
       perplayerkit.sharekit: true
       perplayerkit.shareenderchest: true
-      perplayerkit.transferkits: true
       perplayerkit.swapkit: true
       perplayerkit.deletekit: true
       perplayerkit.publickit: true
       perplayerkit.kit: true
       perplayerkit.enderchest: true
       perplayerkit.viewenderchest: true
-      perplayerkit.regear: true
       perplayerkit.heal: true
       perplayerkit.repair: true
+      perplayerkit.regear: true
       perplayerkit.rekitonrespawn: true
       perplayerkit.rekitonkill: true
+      perplayerkit.kitbroadcast: true
+      perplayerkit.rekit: true
+      perplayerkit.kitroomopen: true
+      perplayerkit.rekittoggle: true
+  perplayerkit.kit.vip:
+    description: Allows access to kit slots 5, 6, 7
+    default: false
+  perplayerkit.ec.vip:
+    description: Allows access to EC slots 5, 6, 7
+    default: false
 
 
 commands:
 
-  perplayerkit:
-    usage: /<command>
+  trkit:
+    usage: /<command> (reload, vb.)
     permission: perplayerkit.admin
+    aliases:
+      - perplayerkit
 
-  aboutperplayerkit:
+  abouttrkit:
     usage: /<command>
     default: true
 
-  kitroom:
+  kitroomadmin:
     usage: /<command>
     permission: perplayerkit.admin
 
@@ -65,28 +78,14 @@ commands:
       - copyenderchest
 
   sharekit:
-    usage: /<command> <slot> [player]
+    usage: /<command>
     permission: perplayerkit.sharekit
 
   shareec:
-    usage: /<command> <slot> [player]
+    usage: /<command>
     permission: perplayerkit.shareenderchest
     aliases:
       - shareenderchest
-
-  transferkits:
-    usage: /<command> <player>
-    permission: perplayerkit.transferkits
-    aliases:
-      - transferkit
-
-  shareaccept:
-    usage: /<command> [id]
-    permission: perplayerkit.copykit
-
-  sharedecline:
-    usage: /<command> [id]
-    permission: perplayerkit.copykit
 
   swapkit:
     usage: /<command>
@@ -194,21 +193,6 @@ commands:
     usage: /<command> <id>
     permission: perplayerkit.admin
 
-  purgeitem:
-    usage: /<command> <item> <all confirm|player ...>
-    permission: perplayerkit.admin
-    aliases:
-      - purgeitems
-
-  kitdata:
-    usage: /<command> <export <all|kitroom|publickits|playerkits> <file>|import <file>>
-    permission: perplayerkit.admin
-
-  regear:
-    usage: /<command>
-    permission: perplayerkit.regear
-    aliases:
-      - rg
   heal:
     usage: /<command>
     permission: perplayerkit.heal
@@ -217,3 +201,33 @@ commands:
     usage: /<command>
     permission: perplayerkit.repair
 
+  kitbroadcast:
+    usage: /<command> [toggle|distance]
+    permission: perplayerkit.kitbroadcast
+    description: "Toggle kit broadcasts or set distance."
+
+  rekit:
+    usage: /<command>
+    permission: perplayerkit.rekit
+    description: "Son kullanılan kiti yeniler."
+    aliases:
+      - rk
+
+  kitroom:
+    usage: /<command>
+    permission: perplayerkit.kitroomopen
+    description: "Kit odasını açar."
+
+  rekittoggle:
+    usage: /<command> <death|kill>
+    permission: perplayerkit.rekittoggle
+    description: "Öldüğünde veya öldürdüğünde rekit toggle."
+    aliases:
+      - rt
+
+  regear:
+    usage: /<command>
+    permission: perplayerkit.regear
+    description: "Kiti regear yapar."
+    aliases:
+      - rg

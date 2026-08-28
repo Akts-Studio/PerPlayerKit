@@ -1,51 +1,51 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit;
 
 import dev.noah.perplayerkit.util.BroadcastManager;
 import dev.noah.perplayerkit.util.IDUtil;
-import dev.noah.perplayerkit.util.KitSlots;
-import dev.noah.perplayerkit.util.Lang;
 import dev.noah.perplayerkit.util.Serializer;
 import org.bukkit.Bukkit;
-import org.bukkit.block.Container;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.block.Banner;
 import org.bukkit.entity.Player;
 import dev.noah.perplayerkit.util.SoundManager;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ArmorMeta;
 import org.bukkit.inventory.meta.BlockStateMeta;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class KitManager {
     private static KitManager instance;
-    private final PerPlayerKit plugin;
-    private final Map<String, ItemStack[]> kitByKitIDMap;
+    private final TrKit plugin;
+    private final HashMap<String, ItemStack[]> kitByKitIDMap;
     private final HashMap<UUID, Integer> lastKitUsedByPlayer;
     private final List<PublicKit> publicKitList;
 
-    public KitManager(PerPlayerKit plugin) {
+    public KitManager(TrKit plugin) {
         this.plugin = plugin;
         lastKitUsedByPlayer = new HashMap<>();
         publicKitList = new ArrayList<>();
-        kitByKitIDMap = new ConcurrentHashMap<>();
+        kitByKitIDMap = new HashMap<>();
         instance = this;
     }
 
@@ -60,31 +60,12 @@ public class KitManager {
         return kitByKitIDMap.get(id);
     }
 
-    private void cacheKit(String id, ItemStack[] kit) {
-        if (kit == null) {
-            kitByKitIDMap.remove(id);
-            return;
-        }
-
-        kitByKitIDMap.put(id, kit);
-    }
-
     public List<PublicKit> getPublicKitList() {
         return publicKitList;
     }
 
-    /**
-     * Refreshes a cached kit after its stored data was rewritten externally
-     * (e.g. by an admin item purge). Passing null removes the cached entry;
-     * a non-null kit only replaces an existing entry, so kits of offline
-     * players are not pulled into the cache.
-     */
-    public void updateCachedKit(String id, ItemStack[] kit) {
-        if (kit == null) {
-            kitByKitIDMap.remove(id);
-        } else {
-            kitByKitIDMap.computeIfPresent(id, (key, oldKit) -> kit);
-        }
+    public void clearPublicKits() {
+        publicKitList.clear();
     }
 
     public int getLastKitLoaded(UUID uuid) {
@@ -107,6 +88,8 @@ public class KitManager {
                     }
                 }
 
+                stripRestrictedCosmeticsIfNeeded(player, kit);
+
                 if (notEmpty) {
                     if (kit[36] != null) {
                         if (!kit[36].getType().toString().contains("BOOTS")) {
@@ -119,7 +102,8 @@ public class KitManager {
                         }
                     }
                     if (kit[38] != null) {
-                        if (!(kit[38].getType().toString().contains("CHESTPLATE") || kit[38].getType().toString().contains("ELYTRA"))) {
+                        if (!(kit[38].getType().toString().contains("CHESTPLATE")
+                                || kit[38].getType().toString().contains("ELYTRA"))) {
                             kit[38] = null;
                         }
                     }
@@ -129,13 +113,13 @@ public class KitManager {
                         }
                     }
 
-                    cacheKit(IDUtil.getPlayerKitId(uuid, slot), kit);
-                    Lang.get().send(player, "success.kit-saved", "slot", String.valueOf(slot));
+                    kitByKitIDMap.put(IDUtil.getPlayerKitId(uuid, slot), kit);
+                    dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "kit-saved", "%slot%", String.valueOf(slot));
 
-                    Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> savePlayerKitToDB(uuid, slot));
+                    dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync((wrappedTask) -> savePlayerKitToDB(uuid, slot));
                     return true;
                 } else {
-                    Lang.get().send(player, "error.empty-kit");
+                    dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "kit-empty");
                 }
             }
         }
@@ -152,6 +136,8 @@ public class KitManager {
             }
         }
 
+        stripRestrictedCosmeticsIfNeeded(player, kit);
+
         if (notEmpty) {
             if (kit[36] != null) {
                 if (!kit[36].getType().toString().contains("BOOTS")) {
@@ -164,7 +150,8 @@ public class KitManager {
                 }
             }
             if (kit[38] != null) {
-                if (!(kit[38].getType().toString().contains("CHESTPLATE") || kit[38].getType().toString().contains("ELYTRA"))) {
+                if (!(kit[38].getType().toString().contains("CHESTPLATE")
+                        || kit[38].getType().toString().contains("ELYTRA"))) {
                     kit[38] = null;
                 }
             }
@@ -174,13 +161,13 @@ public class KitManager {
                 }
             }
 
-            cacheKit(IDUtil.getPublicKitId(publickit), kit);
-            Lang.get().send(player, "success.public-kit-saved", "kitname", publickit);
+            kitByKitIDMap.put(IDUtil.getPublicKitId(publickit), kit);
+            dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "public-kit-saved", "%id%", publickit);
 
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> savePublicKitToDB(publickit));
+            dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync((wrappedTask) -> savePublicKitToDB(publickit));
             return true;
         } else {
-            Lang.get().send(player, "error.empty-kit");
+            dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "kit-empty");
         }
         return false;
     }
@@ -207,7 +194,8 @@ public class KitManager {
                 }
             }
             if (kit[38] != null) {
-                if (!(kit[38].getType().toString().contains("CHESTPLATE") || kit[38].getType().toString().contains("ELYTRA"))) {
+                if (!(kit[38].getType().toString().contains("CHESTPLATE")
+                        || kit[38].getType().toString().contains("ELYTRA"))) {
                     kit[38] = null;
                 }
             }
@@ -217,7 +205,7 @@ public class KitManager {
                 }
             }
 
-            cacheKit(IDUtil.getPublicKitId(id), kit);
+            kitByKitIDMap.put(IDUtil.getPublicKitId(id), kit);
             return true;
         }
         return false;
@@ -237,66 +225,65 @@ public class KitManager {
                 }
 
                 if (notEmpty) {
-                    cacheKit(IDUtil.getECId(uuid, slot), kit);
-                    Lang.get().send(player, "success.ec-saved", "slot", String.valueOf(slot));
-                    Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> saveEnderchestToDB(uuid, slot));
+                    stripRestrictedCosmeticsIfNeeded(player, kit);
+                    kitByKitIDMap.put(IDUtil.getECId(uuid, slot), kit);
+                    dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "ec-saved", "%slot%", String.valueOf(slot));
+                    dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync((wrappedTask) -> saveEnderchestToDB(uuid, slot));
                     return true;
                 } else {
-                    Lang.get().send(player, "error.empty-ec");
+                    dev.noah.perplayerkit.util.MessageManager.get().sendMessage(player, "ec-empty");
                 }
             }
         }
         return false;
     }
 
-    public boolean saveECSilent(UUID uuid, int slot, ItemStack[] kit) {
-        boolean notEmpty = false;
-        for (ItemStack i : kit) {
-            if (i != null) {
-                notEmpty = true;
-                break;
-            }
-        }
-
-        if (!notEmpty) {
-            return false;
-        }
-
-        cacheKit(IDUtil.getECId(uuid, slot), kit);
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> saveEnderchestToDB(uuid, slot));
-        return true;
-    }
-
     public boolean savekit(UUID uuid, int slot, ItemStack[] kit, boolean silent) {
         if (silent) {
-            boolean notEmpty = false;
-            for (ItemStack i : kit) {
-                if (i != null) {
-                    notEmpty = true;
-                    break;
+            if (Bukkit.getPlayer(uuid) != null) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null) {
+                    boolean notEmpty = false;
+                    for (ItemStack i : kit) {
+                        if (i != null) {
+                            if (!notEmpty) {
+                                notEmpty = true;
+                            }
+                        }
+                    }
+
+                    if (notEmpty) {
+                        stripRestrictedCosmeticsIfNeeded(player, kit);
+                        if (kit[36] != null) {
+                            if (!kit[36].getType().toString().contains("BOOTS")) {
+                                kit[36] = null;
+                            }
+                        }
+                        if (kit[37] != null) {
+                            if (!kit[37].getType().toString().contains("LEGGINGS")) {
+                                kit[37] = null;
+                            }
+                        }
+                        if (kit[38] != null) {
+                            if (!(kit[38].getType().toString().contains("CHESTPLATE")
+                                    || kit[38].getType().toString().contains("ELYTRA"))) {
+                                kit[38] = null;
+                            }
+                        }
+                        if (kit[39] != null) {
+                            if (!kit[39].getType().toString().contains("HELMET")) {
+                                kit[39] = null;
+                            }
+                        }
+
+                        kitByKitIDMap.put(IDUtil.getPlayerKitId(uuid, slot), ItemFilter.get().filterItemStack(kit));
+                        return true;
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Kit Boş Olamaz!");
+                    }
                 }
             }
-
-            if (!notEmpty) {
-                return false;
-            }
-
-            if (kit[36] != null && !kit[36].getType().toString().contains("BOOTS")) {
-                kit[36] = null;
-            }
-            if (kit[37] != null && !kit[37].getType().toString().contains("LEGGINGS")) {
-                kit[37] = null;
-            }
-            if (kit[38] != null && !(kit[38].getType().toString().contains("CHESTPLATE") || kit[38].getType().toString().contains("ELYTRA"))) {
-                kit[38] = null;
-            }
-            if (kit[39] != null && !kit[39].getType().toString().contains("HELMET")) {
-                kit[39] = null;
-            }
-
-            cacheKit(IDUtil.getPlayerKitId(uuid, slot), ItemFilter.get().filterItemStack(kit));
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> savePlayerKitToDB(uuid, slot));
-            return true;
+            return false;
         } else {
             return savekit(uuid, slot, kit);
         }
@@ -328,37 +315,18 @@ public class KitManager {
                 }
             }
 
-            ItemStack kitItem = kit[i].clone();
-
-            // Filter contents of any shulker box (or other container) against the same whitelist,
-            // preventing players from bypassing regear restrictions by hiding items inside shulkers.
-            if (kitItem.getItemMeta() instanceof BlockStateMeta blockStateMeta
-                    && blockStateMeta.getBlockState() instanceof Container container) {
-                ItemStack[] contents = container.getInventory().getContents();
-                for (int j = 0; j < contents.length; j++) {
-                    if (contents[j] == null) continue;
-                    boolean onList = whitelist.contains(contents[j].getType().toString());
-                    if (invertWhitelist ? onList : !onList) {
-                        contents[j] = null;
-                    }
-                }
-                container.getInventory().setContents(contents);
-                blockStateMeta.setBlockState(container);
-                kitItem.setItemMeta(blockStateMeta);
-            }
-
-            if (playerInventory[i] == null || playerInventory[i].getType().isAir() || playerInventory[i].getType() == kitItem.getType()) {
-                playerInventory[i] = kitItem;
+            if (playerInventory[i] == null || playerInventory[i].getType().isAir()
+                    || playerInventory[i].getType() == kit[i].getType()) {
+                playerInventory[i] = kit[i];
                 continue;
             }
         }
         player.getInventory().setContents(playerInventory);
-        // Resync the client so updated slots (including the offhand) render correctly.
-        player.updateInventory();
         return true;
     }
 
-    private boolean loadKitInternal(Player player, String kitId, Runnable notFoundMessage, boolean isEnderChest, Runnable afterLoad) {
+    private boolean loadKitInternal(Player player, String kitId, String notFoundMessage, boolean isEnderChest,
+            Runnable afterLoad) {
         if (player == null) {
             return false;
         }
@@ -366,7 +334,7 @@ public class KitManager {
         ItemStack[] kit = kitByKitIDMap.get(kitId);
         if (kit == null) {
             if (notFoundMessage != null) {
-                notFoundMessage.run();
+                player.sendMessage(ChatColor.RED + notFoundMessage);
                 SoundManager.playFailure(player);
             }
             return false;
@@ -376,10 +344,6 @@ public class KitManager {
             player.getEnderChest().setContents(kit);
         } else {
             player.getInventory().setContents(kit);
-            // Force a client-side resync of the whole inventory (including the
-            // offhand slot) so the client doesn't keep rendering a stale item,
-            // e.g. a "ghost" totem in the offhand on the death screen.
-            player.updateInventory();
         }
 
         if (afterLoad != null) {
@@ -391,38 +355,29 @@ public class KitManager {
     }
 
     public boolean loadKit(Player player, int slot) {
-        if (player == null) {
-            return false;
-        }
         return loadKitInternal(player, IDUtil.getPlayerKitId(player.getUniqueId(), slot),
-                () -> Lang.get().send(player, "error.kit-slot-not-found", "slot", String.valueOf(slot)),
-                false, () -> {
-                    BroadcastManager.get().broadcastPlayerLoadedPrivateKit(player, "Kit " + slot);
-                    Lang.get().send(player, "success.kit-loaded", "slot", String.valueOf(slot));
+                "Kit " + slot + " does not exist!", false, () -> {
+                    BroadcastManager.get().broadcastPlayerLoadedPrivateKit(player);
+                    player.sendMessage(org.bukkit.ChatColor.GREEN + "" + slot + ". Kit Yüklendi!");
                     lastKitUsedByPlayer.put(player.getUniqueId(), slot);
+
+                    // Persist to PDC
+                    player.getPersistentDataContainer().set(dev.noah.perplayerkit.commands.RekitToggleCommand.LAST_KIT_KEY,
+                            org.bukkit.persistence.PersistentDataType.INTEGER, slot);
                 });
     }
 
     public boolean loadKitSilent(Player player, int slot) {
-        if (player == null) {
-            return false;
-        }
         return loadKitInternal(player, IDUtil.getPlayerKitId(player.getUniqueId(), slot), null, false, null);
     }
 
     public boolean loadPublicKit(Player player, String id) {
-        String kitDisplayName = publicKitList.stream()
-                .filter(k -> k.id.equals(id))
-                .map(k -> k.name)
-                .findFirst()
-                .orElse(id);
-        return loadKitInternal(player, IDUtil.getPublicKitId(id),
-                () -> Lang.get().send(player, "error.kit-not-found"),
-                false, () -> {
-                    BroadcastManager.get().broadcastPlayerLoadedPublicKit(player, kitDisplayName);
-                    Lang.get().send(player, "success.public-kit-loaded");
-                    Lang.get().send(player, "info.custom-version-available");
-                });
+        return loadKitInternal(player, IDUtil.getPublicKitId(id), "Kit Bulunamadı!", false, () -> {
+            BroadcastManager.get().broadcastPlayerLoadedPublicKit(player);
+            player.sendMessage(ChatColor.GREEN + "Public Kit Yüklendi!");
+            player.sendMessage(
+                    ChatColor.GRAY + "Bu kiti kit düzenleyicisine aktararak kendi kitinizi kaydedebilirsiniz.");
+        });
     }
 
     public boolean loadPublicKitSilent(Player player, String id) {
@@ -430,30 +385,29 @@ public class KitManager {
     }
 
     public boolean loadEnderchest(Player player, int slot) {
-        if (player == null) {
-            return false;
-        }
         return loadKitInternal(player, IDUtil.getECId(player.getUniqueId(), slot),
-                () -> Lang.get().send(player, "error.kit-slot-not-found", "slot", String.valueOf(slot)),
-                true, () -> {
+                "Enderchest " + slot + " Bulunamadı!", true, () -> {
                     BroadcastManager.get().broadcastPlayerLoadedEnderChest(player);
-                    Lang.get().send(player, "success.ec-loaded", "slot", String.valueOf(slot));
+                    player.sendMessage(ChatColor.GREEN + "" + slot + ". Enderchest Yüklendi!");
                 });
     }
 
     public boolean loadEnderchestSilent(Player player, int slot) {
-        if (player == null) {
-            return false;
-        }
         return loadKitInternal(player, IDUtil.getECId(player.getUniqueId(), slot), null, true, null);
     }
 
     public boolean loadLastKit(Player player) {
-        if (player == null) {
-            return false;
-        }
         if (lastKitUsedByPlayer.containsKey(player.getUniqueId())) {
             return loadKit(player, lastKitUsedByPlayer.get(player.getUniqueId()));
+        }
+
+        // Try to load from PDC if not in memory
+        if (player.getPersistentDataContainer().has(dev.noah.perplayerkit.commands.RekitToggleCommand.LAST_KIT_KEY,
+                org.bukkit.persistence.PersistentDataType.INTEGER)) {
+            int slot = player.getPersistentDataContainer().get(
+                    dev.noah.perplayerkit.commands.RekitToggleCommand.LAST_KIT_KEY,
+                    org.bukkit.persistence.PersistentDataType.INTEGER);
+            return loadKit(player, slot);
         }
         return false;
     }
@@ -483,35 +437,30 @@ public class KitManager {
     }
 
     public void loadPlayerDataFromDB(UUID uuid) {
-        for (int slot = 1; slot <= KitSlots.maxKits(); slot++) {
-            loadPlayerKitFromDB(uuid, slot);
+        for (int slot = 1; slot < 10; slot++) {
+            String data = TrKit.storageManager.getKitDataByID(IDUtil.getPlayerKitId(uuid, slot));
+            if (!data.equalsIgnoreCase("error")) {
+                try {
+                    ItemStack[] kit = Serializer.itemStackArrayFromBase64(data);
+                    kitByKitIDMap.put(IDUtil.getPlayerKitId(uuid, slot), ItemFilter.get().filterItemStack(kit));
+                } catch (IOException ignored) {
+                }
+            }
         }
-        for (int slot = 1; slot <= KitSlots.maxKits(); slot++) {
-            loadPlayerEnderchestFromDB(uuid, slot);
-        }
-    }
-
-    public void loadPlayerKitFromDB(UUID uuid, int slot) {
-        loadKitEntryFromDB(IDUtil.getPlayerKitId(uuid, slot));
-    }
-
-    public void loadPlayerEnderchestFromDB(UUID uuid, int slot) {
-        loadKitEntryFromDB(IDUtil.getECId(uuid, slot));
-    }
-
-    private void loadKitEntryFromDB(String id) {
-        String data = PerPlayerKit.storageManager.getKitDataByID(id);
-        if (!data.equalsIgnoreCase("error")) {
-            try {
-                ItemStack[] kit = Serializer.itemStackArrayFromBase64(data);
-                cacheKit(id, ItemFilter.get().filterItemStack(kit));
-            } catch (IOException ignored) {
+        for (int slot = 1; slot < 10; slot++) {
+            String data = TrKit.storageManager.getKitDataByID(IDUtil.getECId(uuid, slot));
+            if (!data.equalsIgnoreCase("error")) {
+                try {
+                    ItemStack[] kit = Serializer.itemStackArrayFromBase64(data);
+                    kitByKitIDMap.put(IDUtil.getECId(uuid, slot), ItemFilter.get().filterItemStack(kit));
+                } catch (IOException ignored) {
+                }
             }
         }
     }
 
     public void savePlayerKitsToDB(UUID uuid) {
-        for (int i = 1; i <= KitSlots.maxKits(); i++) {
+        for (int i = 1; i < 10; i++) {
             saveKitToDB(IDUtil.getPlayerKitId(uuid, i), true);
             saveKitToDB(IDUtil.getECId(uuid, i), true);
         }
@@ -531,7 +480,8 @@ public class KitManager {
 
     private void saveKitToDB(String key, boolean removeAfterSave) {
         if (kitByKitIDMap.get(key) != null) {
-            PerPlayerKit.storageManager.saveKitDataByID(key, Serializer.itemStackArrayToBase64(ItemFilter.get().filterItemStack(kitByKitIDMap.get(key))));
+            TrKit.storageManager.saveKitDataByID(key,
+                    Serializer.itemStackArrayToBase64(ItemFilter.get().filterItemStack(kitByKitIDMap.get(key))));
             if (removeAfterSave) {
                 kitByKitIDMap.remove(key);
             }
@@ -539,11 +489,11 @@ public class KitManager {
     }
 
     public void loadPublicKitFromDB(String id) {
-        String data = PerPlayerKit.storageManager.getKitDataByID(IDUtil.getPublicKitId(id));
+        String data = TrKit.storageManager.getKitDataByID(IDUtil.getPublicKitId(id));
         if (!data.equalsIgnoreCase("error")) {
             try {
                 ItemStack[] kit = Serializer.itemStackArrayFromBase64(data);
-                cacheKit(IDUtil.getPublicKitId(id), ItemFilter.get().filterItemStack(kit));
+                kitByKitIDMap.put(IDUtil.getPublicKitId(id), ItemFilter.get().filterItemStack(kit));
             } catch (IOException ignored) {
                 plugin.getLogger().info("Error loading public kit " + id);
             }
@@ -553,7 +503,8 @@ public class KitManager {
     public boolean deleteKit(UUID uuid, int slot) {
         if (hasKit(uuid, slot)) {
             kitByKitIDMap.remove(IDUtil.getPlayerKitId(uuid, slot));
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> PerPlayerKit.storageManager.deleteKitByID(IDUtil.getPlayerKitId(uuid, slot)));
+            dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync(
+                    (wrappedTask) -> TrKit.storageManager.deleteKitByID(IDUtil.getPlayerKitId(uuid, slot)));
             return true;
         }
         return false;
@@ -562,10 +513,79 @@ public class KitManager {
     public boolean deleteEnderchest(UUID uuid, int slot) {
         if (hasEC(uuid, slot)) {
             kitByKitIDMap.remove(IDUtil.getECId(uuid, slot));
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> PerPlayerKit.storageManager.deleteKitByID(IDUtil.getECId(uuid, slot)));
+            dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync(
+                    (wrappedTask) -> TrKit.storageManager.deleteKitByID(IDUtil.getECId(uuid, slot)));
             return true;
         }
         return false;
+    }
+
+    private void stripRestrictedCosmeticsIfNeeded(Player player, ItemStack[] kit) {
+        boolean hasVip = player.hasPermission("perplayerkit.kit.vip")
+                || player.hasPermission("perplayerkit.ec.vip");
+        boolean canUseTrims = hasVip;
+        boolean canUsePatternedShield = hasVip;
+        for (ItemStack item : kit) {
+            if (item == null || !item.hasItemMeta()) {
+                continue;
+            }
+
+            if (!canUseTrims && item.getItemMeta() instanceof ArmorMeta armorMeta && armorMeta.hasTrim()) {
+                armorMeta.setTrim(null);
+                item.setItemMeta(armorMeta);
+            }
+
+            if (!canUsePatternedShield && item.getType() == Material.SHIELD
+                    && item.getItemMeta() instanceof BlockStateMeta blockStateMeta
+                    && blockStateMeta.getBlockState() instanceof Banner banner
+                    && !banner.getPatterns().isEmpty()) {
+                banner.setPatterns(Collections.emptyList());
+                blockStateMeta.setBlockState(banner);
+                item.setItemMeta(blockStateMeta);
+            }
+        }
+    }
+
+    public void sanitizeAllStoredKitsByOnlineVipPermissions() {
+        int updated = 0;
+        for (String kitId : TrKit.storageManager.getAllKitIDs()) {
+            if (kitId == null || kitId.length() < 36 || kitId.startsWith("public") || kitId.startsWith("kitroom")) {
+                continue;
+            }
+
+            UUID playerId;
+            try {
+                playerId = UUID.fromString(kitId.substring(0, 36));
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+
+            Player onlinePlayer = Bukkit.getPlayer(playerId);
+            if (onlinePlayer == null) {
+                continue;
+            }
+
+            String data = TrKit.storageManager.getKitDataByID(kitId);
+            if (data.equalsIgnoreCase("error")) {
+                continue;
+            }
+
+            try {
+                ItemStack[] kit = Serializer.itemStackArrayFromBase64(data);
+                String before = Serializer.itemStackArrayToBase64(kit);
+                stripRestrictedCosmeticsIfNeeded(onlinePlayer, kit);
+                String after = Serializer.itemStackArrayToBase64(kit);
+                if (!before.equals(after)) {
+                    TrKit.storageManager.saveKitDataByID(kitId, after);
+                    updated++;
+                }
+            } catch (IOException ignored) {
+            }
+        }
+
+        if (updated > 0) {
+            plugin.getLogger().info("Sanitized " + updated + " kit(s): trimmed armor / patterned shield removed for non-VIP online players.");
+        }
     }
 
     private void applyKitLoadEffects(Player player, boolean isEnderChest) {
@@ -584,7 +604,8 @@ public class KitManager {
                 player.setSaturation(20);
             }
             if (plugin.getConfig().getBoolean("feature.remove-potion-effects-on-enderchest-load", false)) {
-                player.getActivePotionEffects().forEach(potionEffect -> player.removePotionEffect(potionEffect.getType()));
+                player.getActivePotionEffects()
+                        .forEach(potionEffect -> player.removePotionEffect(potionEffect.getType()));
             }
         } else {
             if (plugin.getConfig().getBoolean("feature.set-health-on-kit-load", false)) {
@@ -597,8 +618,16 @@ public class KitManager {
                 player.setSaturation(20);
             }
             if (plugin.getConfig().getBoolean("feature.remove-potion-effects-on-kit-load", false)) {
-                player.getActivePotionEffects().forEach(potionEffect -> player.removePotionEffect(potionEffect.getType()));
+                player.getActivePotionEffects()
+                        .forEach(potionEffect -> player.removePotionEffect(potionEffect.getType()));
             }
+        }
+    }
+
+    public void filterAllLoadedKits() {
+        for (Map.Entry<String, ItemStack[]> entry : kitByKitIDMap.entrySet()) {
+            ItemStack[] filtered = ItemFilter.get().filterItemStack(entry.getValue());
+            kitByKitIDMap.put(entry.getKey(), filtered);
         }
     }
 }

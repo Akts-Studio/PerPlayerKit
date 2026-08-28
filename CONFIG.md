@@ -56,14 +56,14 @@ For a complete reference of all available options, see the [MiniMessage document
 
 ### **Database Credentials**
 
-Select either storage type. SQLite is recommended for small servers, while MySQL or PostgreSQL is recommended for larger servers or multi-server setups.
+Select either storage type. SQLite is recommended for small servers, while MySQL is recommended for larger servers or multi-server setups.
 
 ```yaml
-# It is strongly recommended to use MySQL, PostgreSQL or SQLite
+# It is strongly recommended to use MySQL or SQLite
 # YAML should not be used in any environment
 
 
-storage: #sqlite, mysql, postgresql, redis, yml (yaml)
+storage: #sqlite, mysql, redis, yml (yaml)
   type: "sqlite"
 
 mysql:
@@ -72,17 +72,6 @@ mysql:
   dbname: "kitdatabase"
   username: "username"
   password: "pa55w0rd"
-  useSSL: false
-  maximumPoolSize: 10
-
-postgresql:
-  host: "localhost"
-  port: "5432"
-  dbname: "kitdatabase"
-  username: "username"
-  password: "pa55w0rd"
-  useSSL: false
-  maximumPoolSize: 10
 
 redis:
   host: "localhost"
@@ -123,22 +112,6 @@ scheduled-broadcast:
   messages: # List of messages to broadcast, in mini message format.
     - "Example message"
 ```
-
----
-
-### **Kit Slots**
-
-Controls how many kit slots each player has. The limit applies equally to kits and enderchest kits.
-
-```yaml
-max-kits: 9 # Number of kit slots per player. Range: 1-99 (values outside are clamped).
-```
-
-- The default of 9 keeps the classic single-page kit menu. Raising the limit adds pages to the `/kit` menu (9 kits per page) with previous/next buttons in the bottom corners.
-- Shortcut commands `/k10`..`/k<max>` and `/ec10`..`/ec<max>` are registered automatically at startup when the limit is above 9.
-- Changing the value requires a server restart.
-- Lowering the limit later hides kits stored in higher slots but does not delete them; raising it again makes them accessible. `/purgeitem` always covers all 99 possible slots regardless of this setting.
-- If multiple servers share one database, use the same `max-kits` value everywhere.
 
 ---
 
@@ -348,7 +321,6 @@ feature:
     remove-potion-effects-on-enderchest-load: false
 
     rekit-on-respawn: true
-    rekit-on-respawn-delay: 0 #delay in ticks before re-applying kit on respawn (20 ticks = 1 second)
     rekit-on-kill: false
 
     broadcast-kit-messages: true #broadcasts when a player loads a kit or enderchest
@@ -364,8 +336,7 @@ feature:
 
 **Kit Loading Features:**
 - **rekit-on-respawn**: Automatically loads the player's last used kit when they respawn after death
-- **rekit-on-respawn-delay**: Delay in ticks before re-applying the kit on respawn (20 ticks = 1 second). Useful if another plugin gives items on respawn. Default: `0` (instant)
-- **rekit-on-kill**: Automatically re-equips the killer when they kill another player — either their last used kit, or a specific public kit per world / WorldGuard region. See [Rekit on Kill Configuration](#rekit-on-kill-configuration) for advanced options
+- **rekit-on-kill**: Automatically loads the player's last used kit when they kill another player
 - **broadcast-kit-messages**: Controls whether broadcast messages are sent when players load kits or enderchesets (e.g., "Player loaded a kit"). When set to `false`, these specific kit-loading broadcast messages are suppressed
 
 **Action Broadcast Features:**
@@ -380,139 +351,3 @@ feature:
 - **feed-on-enderchest-load**: Sets player hunger to full when loading an enderchest
 - **set-saturation-on-enderchest-load**: Sets player saturation to full when loading an enderchest
 - **remove-potion-effects-on-enderchest-load**: Removes all potion effects when loading an enderchest
-
----
-
-### **Rekit on Kill Configuration**
-
-The `rekit-on-kill` feature automatically re-equips the killer when they kill another player. By default it reloads the killer's last used kit, but it can also be configured to give a specific public kit depending on the world — or even the WorldGuard region — the killer is standing in. This feature supports world-based filtering to control where it activates, based on the killer's current world.
-
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: false
-    # World filtering based on killer's current world
-    # If world-whitelist is not empty, rekit-on-kill only works in those worlds
-    # If world-whitelist is empty and world-blacklist is not empty, rekit-on-kill works everywhere except those worlds
-    # If both are empty, rekit-on-kill works in all worlds
-    world-whitelist: []
-    world-blacklist: []
-    # Optional: give a specific public kit instead of the killer's last used kit
-    kits:
-      "ffa": "kit1"
-      "ffa:sword_arena":
-        kit: "sword"
-```
-
-#### Configuration Options:
-
-- **enabled**: Set to `true` to enable the rekit-on-kill feature
-- **world-whitelist**: List of world names where rekit-on-kill is allowed. If this list is not empty, the feature only works in these worlds
-- **world-blacklist**: List of world names where rekit-on-kill is disabled. Only used if `world-whitelist` is empty
-- **kits**: Optional map of worlds (and WorldGuard regions) to public kits. When an entry matches the killer's location, the killer receives that public kit instead of their last used kit. See [Giving a Specific Public Kit](#giving-a-specific-public-kit-per-world--per-worldguard-region) below
-
-#### World Filtering Logic:
-
-1. If `world-whitelist` contains worlds → only allow rekit-on-kill in those worlds
-2. If `world-whitelist` is empty but `world-blacklist` contains worlds → allow rekit-on-kill everywhere except those worlds
-3. If both lists are empty → allow rekit-on-kill in all worlds
-
-#### Example Configurations:
-
-**Enable globally (all worlds):**
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: true
-    world-whitelist: []
-    world-blacklist: []
-```
-
-**Only enable in specific arena worlds:**
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: true
-    world-whitelist:
-      - "pvp_arena"
-      - "duel_world"
-    world-blacklist: []
-```
-
-**Enable everywhere except spawn/lobby:**
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: true
-    world-whitelist: []
-    world-blacklist:
-      - "spawn"
-      - "lobby"
-```
-
-#### Giving a Specific Public Kit (per world / per WorldGuard region):
-
-On FFA-style servers you often want every kill to hand the killer a fixed, server-defined kit rather than whatever kit they last loaded. The optional `kits` map does exactly that.
-
-Each key is either:
-
-- **`"<world>"`** — matches every kill in that world
-- **`"<world>:<region>"`** — matches kills where the killer is inside that WorldGuard region in that world. Region entries require the [WorldGuard](https://enginehub.org/worldguard) plugin to be installed (it is an optional dependency — everything else works without it)
-
-Each value names a **public kit** — use the kit's id (the key under the `publickits` section, e.g. `kit1`), not its display name. Both of these forms are accepted:
-
-```yaml
-kits:
-  "ffa": "kit1"        # shorthand: key directly maps to the kit id
-  "ffa:sword_arena":   # expanded form
-    kit: "sword"
-```
-
-The kit must also have contents saved with `/savepublickit <id>`; an entry pointing at a kit with no saved contents is skipped with a console warning, and the killer gets their last used kit instead.
-
-**Matching rules:**
-
-1. Region entries (`"world:region"`) always win over world-wide entries (`"world"`)
-2. If the killer is inside several overlapping regions with entries, the region with the highest WorldGuard priority wins (ties are broken alphabetically by region id)
-3. If no entry matches, the killer's last used kit is loaded — the default rekit-on-kill behavior
-4. World and region names are matched case-insensitively; quotes around keys are recommended since region keys contain a colon
-5. The `world-whitelist` / `world-blacklist` filters run first — a kill in a filtered-out world never rekits, even if a `kits` entry matches
-
-**Notes:**
-
-- Kits given through this feature are applied silently: no chat broadcast and no "kit loaded" message, so kill-heavy FFA gameplay doesn't spam chat
-- The killer still needs the `perplayerkit.rekitonkill` permission (granted by default via `perplayerkit.use`)
-- If region entries are configured but WorldGuard is not installed, a warning is logged on startup and those entries are ignored; world-wide entries keep working
-- Config changes take effect after a server restart
-
-**Example — FFA server with a region-specific arena:**
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: true
-    world-whitelist: []
-    world-blacklist: []
-    kits:
-      # Any kill in the "ffa" world hands the killer the "diamond" public kit
-      "ffa": "diamond"
-      # Except inside the WorldGuard region "sword_arena", where they get "sword"
-      "ffa:sword_arena":
-        kit: "sword"
-```
-
-**Example — different kit per arena world, last-kit behavior elsewhere:**
-```yaml
-feature:
-  rekit-on-kill:
-    enabled: true
-    world-whitelist: []
-    world-blacklist: []
-    kits:
-      "nethpot_arena": "nethpot"
-      "crystal_arena": "crystal"
-      # kills in any other world reload the killer's last used kit
-```
-
-#### Backwards Compatibility:
-
-Existing configurations using the old boolean format (`rekit-on-kill: false` or `rekit-on-kill: true`) will continue to work. When the plugin updates, it will automatically add the new configuration keys with default values. No manual changes are required.

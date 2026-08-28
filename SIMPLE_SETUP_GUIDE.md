@@ -92,13 +92,7 @@ Share this with your players:
 ### Basic Commands:
 
 - **`/kit`** or **`/k`** - Open the main kit menu
-- **`/k1`** through **`/k9`** - Quickly load kit 1-9 (more slots available if the server raises `max-kits` in the config, up to `/k99`)
-
-### Sharing Kits:
-
-- **`/sharekit <slot> <player>`** - Send a kit to another player; they click **[ACCEPT]** in chat to receive it (**`/shareec`** does the same for ender chests)
-- **`/sharekit <slot>`** - Get a share code instead, great for sharing with multiple people; they redeem it with **`/copykit <code>`**
-- **`/transferkits <player>`** - Send ALL your kits and ender chests to another account; once they accept, your kits are copied into their kit slots. Perfect for moving to a new account!
+- **`/k1`** through **`/k9`** - Quickly load kit 1-9
 
 ### How to Make a Kit:
 
@@ -128,7 +122,6 @@ feature:
 ```yaml
 feature:
   rekit-on-respawn: true
-  rekit-on-respawn-delay: 0 #delay in ticks (20 ticks = 1 second). useful if another plugin gives items on respawn.
 ```
 
 ### Disable Kits in Certain Worlds:

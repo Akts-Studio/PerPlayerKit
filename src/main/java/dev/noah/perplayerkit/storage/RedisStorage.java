@@ -1,29 +1,30 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.storage;
 
+import dev.noah.perplayerkit.TrKit;
 import org.bukkit.plugin.Plugin;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
 public class RedisStorage implements StorageManager {
@@ -61,7 +62,7 @@ public class RedisStorage implements StorageManager {
         try (Jedis jedis = getConnection()) {
             return "PONG".equals(jedis.ping());
         } catch (Exception e) {
-            logRedisFailure("connectivity check", e);
+            e.printStackTrace();
             return false;
         }
     }
@@ -83,7 +84,7 @@ public class RedisStorage implements StorageManager {
         try (Jedis jedis = getConnection()) {
             jedis.ping();
         } catch (Exception e) {
-            logRedisFailure("keepalive", e);
+            e.printStackTrace();
         }
     }
 
@@ -92,7 +93,7 @@ public class RedisStorage implements StorageManager {
         try (Jedis jedis = getConnection()) {
             jedis.set(kitID, data);
         } catch (Exception e) {
-            logRedisFailure("save operation for kit ID " + kitID, e);
+            e.printStackTrace();
         }
     }
 
@@ -102,7 +103,7 @@ public class RedisStorage implements StorageManager {
             String data = jedis.get(kitID);
             return data == null ? "Error" : data;
         } catch (Exception e) {
-            logRedisFailure("read operation for kit ID " + kitID, e);
+            e.printStackTrace();
             return "Error";
         }
     }
@@ -112,7 +113,7 @@ public class RedisStorage implements StorageManager {
         try (Jedis jedis = getConnection()) {
             return jedis.exists(kitID);
         } catch (Exception e) {
-            logRedisFailure("existence check for kit ID " + kitID, e);
+            e.printStackTrace();
             return false;
         }
     }
@@ -122,7 +123,17 @@ public class RedisStorage implements StorageManager {
         try (Jedis jedis = getConnection()) {
             jedis.del(kitID);
         } catch (Exception e) {
-            logRedisFailure("delete operation for kit ID " + kitID, e);
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public Set<String> getAllKitIDs() {
+        try (Jedis jedis = getConnection()) {
+            return jedis.keys("*");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptySet();
         }
     }
 
@@ -132,26 +143,5 @@ public class RedisStorage implements StorageManager {
         }
         return pool.getResource();
     }
-
-    @Override
-    public Set<String> getAllKitIDs() {
-        Set<String> kitIDs = new HashSet<>();
-        try (Jedis jedis = getConnection()) {
-            kitIDs.addAll(jedis.keys("*"));
-        } catch (Exception e) {
-            logRedisFailure("list operation", e);
-        }
-        return kitIDs;
-    }
-
-    private void logRedisFailure(String operation, Exception exception) {
-        if (plugin == null || plugin.getLogger() == null) {
-            return;
-        }
-        plugin.getLogger().severe("Redis " + operation + " failed: " + exception.getMessage());
-        plugin.getLogger().severe(exception.toString());
-        for (StackTraceElement element : exception.getStackTrace()) {
-            plugin.getLogger().severe("\tat " + element);
-        }
-    }
 }
+

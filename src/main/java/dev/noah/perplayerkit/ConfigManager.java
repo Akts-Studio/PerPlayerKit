@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit;
 
@@ -25,20 +25,8 @@ import org.bukkit.plugin.Plugin;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Set;
 
 public class ConfigManager {
-
-    /**
-     * Keys that were moved out of config.yml into lang files in v2. ConfigManager must not
-     * re-add them when merging missing keys, or migrated installs would gain stale duplicates.
-     */
-    private static final Set<String> LANG_KEYS = Set.of(
-            "prefix",
-            "disabled-command-message",
-            "motd.message",
-            "scheduled-broadcast.messages"
-    );
     private final File configFile;
     private final FileConfiguration config;
     private final Plugin plugin;
@@ -83,11 +71,6 @@ public class ConfigManager {
                 continue;
             }
 
-            // Strings that live in lang files no longer belong in config.yml
-            if (LANG_KEYS.contains(key) || key.endsWith(".message") && key.startsWith("messages.")) {
-                continue;
-            }
-
             // Add missing keys for everything else
             if (!config.contains(key)) {
                 config.set(key, defaultConfig.get(key));
@@ -109,3 +92,4 @@ public class ConfigManager {
 
 
 }
+

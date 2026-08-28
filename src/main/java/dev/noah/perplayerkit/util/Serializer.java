@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.util;
 
@@ -25,7 +25,7 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Base64;
+import java.util.Base64; // DEĞİŞİKLİK: Java'nın kendi kütüphanesi
 
 public class Serializer {
 
@@ -52,7 +52,10 @@ public class Serializer {
 
             // Serialize that array
             dataOutput.close();
-            return Base64.getMimeEncoder().encodeToString(outputStream.toByteArray());
+
+            // DEĞİŞİKLİK: Eski Base64Coder yerine Java Base64 kullanıldı
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+
         } catch (Exception e) {
             throw new IllegalStateException("Unable to save item stacks.", e);
         }
@@ -69,7 +72,8 @@ public class Serializer {
      */
     public static ItemStack[] itemStackArrayFromBase64(String data) throws IOException {
         try {
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getMimeDecoder().decode(data));
+            // DEĞİŞİKLİK: Eski Base64Coder yerine Java Base64 kullanıldı
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
             BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
             ItemStack[] items = new ItemStack[dataInput.readInt()];
 

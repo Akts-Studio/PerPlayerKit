@@ -19,7 +19,6 @@ public class StyleManager {
 
     private Material glassMaterial;
     private String titleColor;
-    private String titleColorTag;
 
     public StyleManager(Plugin plugin) {
         this.plugin = plugin;
@@ -39,7 +38,6 @@ public class StyleManager {
         }
 
         String colorTag = plugin.getConfig().getString("interface.main-color", "<blue>");
-        this.titleColorTag = colorTag;
         this.titleColor = miniMessageToLegacy(colorTag);
     }
 
@@ -67,9 +65,5 @@ public class StyleManager {
 
     public String getPrimaryColor() {
         return titleColor;
-    }
-
-    public String getPrimaryColorTag() {
-        return titleColorTag;
     }
 }

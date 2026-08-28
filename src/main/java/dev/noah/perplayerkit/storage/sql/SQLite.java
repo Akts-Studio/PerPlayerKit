@@ -1,20 +1,20 @@
 /*
- * Copyright 2022-2026 Noah Ross
+ * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit.storage.sql;
 
@@ -22,11 +22,8 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.bukkit.plugin.Plugin;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.File;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class SQLite implements SQLDatabase {
@@ -68,8 +65,7 @@ public class SQLite implements SQLDatabase {
             config.setMaximumPoolSize(1); // SQLite is single-writer, use 1 connection
             config.setMinimumIdle(1); // Keep one connection alive
             config.setConnectionTimeout(30000); // 30 seconds connection timeout
-            // No idleTimeout: with maximumPoolSize == minimumIdle the pool is fixed size,
-            // so idle connections are never retired and HikariCP warns if it is set
+            config.setIdleTimeout(300000); // 5 minutes idle timeout (reduced from 10)
             config.setMaxLifetime(1800000); // 30 minutes max connection lifetime
             config.setLeakDetectionThreshold(60000); // 60 seconds leak detection
             config.setKeepaliveTime(30000); // 30 seconds keepalive (HikariCP 4.0+)
@@ -116,44 +112,5 @@ public class SQLite implements SQLDatabase {
         }
         return dataSource.getConnection();
     }
-
-    @Override
-    public boolean supportsOnlineBackup() {
-        return true;
-    }
-
-    /**
-     * Snapshot the database with {@code VACUUM INTO} (SQLite 3.27+). SQLite reads
-     * the database inside a transaction and writes a fresh, defragmented copy that
-     * already contains everything sitting in the WAL, so the result is consistent
-     * without pausing the server and without copying the -wal/-shm sidecars.
-     */
-    @Override
-    public void backupTo(Path target) throws SQLException {
-        // VACUUM INTO refuses to overwrite, so clear the target first.
-        try {
-            Path parent = target.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            Files.deleteIfExists(target);
-        } catch (IOException e) {
-            throw new SQLException("Failed to prepare SQLite backup target " + target, e);
-        }
-
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement("VACUUM INTO ?")) {
-            ps.setString(1, target.toAbsolutePath().toString());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            // Do not leave a half-written snapshot behind for the retention
-            // sweep to hand back to someone as a valid backup.
-            try {
-                Files.deleteIfExists(target);
-            } catch (IOException suppressed) {
-                e.addSuppressed(suppressed);
-            }
-            throw e;
-        }
-    }
 }
+

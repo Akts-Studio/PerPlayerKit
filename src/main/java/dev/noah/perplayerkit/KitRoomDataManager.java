@@ -1,20 +1,20 @@
 /*
  * Copyright 2022-2025 Noah Ross
  *
- * This file is part of PerPlayerKit.
+ * This file is part of TrKit.
  *
- * PerPlayerKit is free software: you can redistribute it and/or modify it under
+ * TrKit is free software: you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * PerPlayerKit is distributed in the hope that it will be useful, but WITHOUT ANY
+ * TrKit is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
  * more details.
  *
  * You should have received a copy of the GNU Affero General Public License
- * along with PerPlayerKit. If not, see <https://www.gnu.org/licenses/>.
+ * along with TrKit. If not, see <https://www.gnu.org/licenses/>.
  */
 package dev.noah.perplayerkit;
 
@@ -24,8 +24,6 @@ import dev.noah.perplayerkit.util.Serializer;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
-
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -75,19 +73,13 @@ public class KitRoomDataManager {
     }
 
     public void saveToDBAsync() {
-        new BukkitRunnable() {
-
-            @Override
-            public void run() {
-
-                for (int i = 0; i < 5; i++) {
-                    ItemStack[] pagedata = kitroomData.get(i);
-                    String output = Serializer.itemStackArrayToBase64(pagedata);
-                    PerPlayerKit.storageManager.saveKitDataByID(IDUtil.getKitRoomId(i), output);
-                }
+        dev.noah.perplayerkit.TrKit.foliaLib.getImpl().runAsync((wrappedTask) -> {
+            for (int i = 0; i < 5; i++) {
+                ItemStack[] pagedata = kitroomData.get(i);
+                String output = Serializer.itemStackArrayToBase64(pagedata);
+                TrKit.storageManager.saveKitDataByID(IDUtil.getKitRoomId(i), output);
             }
-
-        }.runTaskAsynchronously(plugin);
+        });
 
 
     }
@@ -95,7 +87,7 @@ public class KitRoomDataManager {
     public void loadFromDB() {
         ItemFilter.get().clearWhitelist();
         for (int i = 0; i < 5; i++) {
-            String input = PerPlayerKit.storageManager.getKitDataByID(IDUtil.getKitRoomId(i));
+            String input = TrKit.storageManager.getKitDataByID(IDUtil.getKitRoomId(i));
             if (!input.equalsIgnoreCase("error")) {
                 try {
                     ItemStack[] pagedata = Serializer.itemStackArrayFromBase64(input);
@@ -110,6 +102,7 @@ public class KitRoomDataManager {
     }
 
 }
+
 
 
 
